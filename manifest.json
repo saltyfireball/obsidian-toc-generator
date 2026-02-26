@@ -1,7 +1,7 @@
 {
 	"id": "toc-generator",
 	"name": "TOC Generator",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.0.0",
 	"description": "Generate and display a table of contents from headings in your notes. Supports numbered lists, custom shapes, heading level filtering, and optional Figlet ASCII art titles.",
 	"author": "saltyfireball",
