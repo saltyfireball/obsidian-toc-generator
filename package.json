@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-toc-generator",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Generate and display a table of contents from headings in Obsidian notes.",
 	"main": "main.js",
 	"type": "module",
