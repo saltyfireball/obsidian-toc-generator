@@ -7,7 +7,7 @@ interface RenderSettingsTabArgs {
 }
 
 export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs): void {
-	containerEl.createEl("h2", { text: "TOC Generator Settings" });
+	new Setting(containerEl).setName("TOC generator settings").setHeading();
 
 	// Enabled toggle
 	new Setting(containerEl)
@@ -23,7 +23,7 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 		});
 
 	// Code Block ID
-	containerEl.createEl("h3", { text: "Code Block" });
+	new Setting(containerEl).setName("Code block").setHeading();
 
 	new Setting(containerEl)
 		.setName("Code block language ID")
@@ -43,7 +43,7 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 		});
 
 	// Default Values
-	containerEl.createEl("h3", { text: "Default Values" });
+	new Setting(containerEl).setName("Default values").setHeading();
 	containerEl.createEl("p", {
 		text: "These defaults apply when a TOC code block does not specify its own value.",
 		cls: "tg-hint",
@@ -126,7 +126,7 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 	// Usage Examples
 	const codeBlockId = plugin.settings.codeBlockId;
 
-	containerEl.createEl("h3", { text: "Usage Examples" });
+	new Setting(containerEl).setName("Usage examples").setHeading();
 	containerEl.createEl("p", {
 		text: `Add a ${codeBlockId} code block to any note to generate a table of contents from that note's headings.`,
 		cls: "tg-hint",
@@ -186,7 +186,7 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 
 	// Options Reference Table
 	const optionsTable = containerEl.createDiv("tg-options-table");
-	optionsTable.createEl("h3", { text: "Available Options" });
+	new Setting(optionsTable).setName("Available options").setHeading();
 	const table = optionsTable.createEl("table");
 	const headerRow = table.createEl("tr");
 	headerRow.createEl("th", { text: "Option" });
