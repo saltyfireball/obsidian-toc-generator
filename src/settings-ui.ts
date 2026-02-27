@@ -7,11 +7,11 @@ interface RenderSettingsTabArgs {
 }
 
 export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs): void {
-	new Setting(containerEl).setName("TOC generator settings").setHeading();
+	new Setting(containerEl).setName("Table of contents").setHeading();
 
 	// Enabled toggle
 	new Setting(containerEl)
-		.setName("Enable TOC Generator")
+		.setName("Enable table of contents generator")
 		.setDesc("Toggle the table of contents code block processor. Changing this requires a plugin reload.")
 		.addToggle((toggle) => {
 			toggle
@@ -26,11 +26,11 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 	new Setting(containerEl).setName("Code block").setHeading();
 
 	new Setting(containerEl)
-		.setName("Code block language ID")
-		.setDesc("The language identifier for TOC code blocks (e.g. my-toc). Changing this requires a plugin reload.")
+		.setName("Code block language identifier")
+		.setDesc("The language identifier for table of contents code blocks. Changing this requires a plugin reload.")
 		.addText((text) => {
 			text
-				.setPlaceholder("my-toc")
+				.setPlaceholder("My-toc")
 				.setValue(plugin.settings.codeBlockId)
 				.onChange(async (value) => {
 					const trimmed = value.trim();
@@ -39,13 +39,13 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 						await plugin.saveSettings();
 					}
 				});
-			text.inputEl.style.width = "200px";
+			text.inputEl.addClass("tg-input-width");
 		});
 
 	// Default Values
 	new Setting(containerEl).setName("Default values").setHeading();
 	containerEl.createEl("p", {
-		text: "These defaults apply when a TOC code block does not specify its own value.",
+		text: "These defaults apply when a table of contents code block does not specify its own value.",
 		cls: "tg-hint",
 	});
 
@@ -60,12 +60,12 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 					plugin.settings.defaultTitle = value;
 					await plugin.saveSettings();
 				});
-			text.inputEl.style.width = "200px";
+			text.inputEl.addClass("tg-input-width");
 		});
 
 	new Setting(containerEl)
 		.setName("Default min heading level")
-		.setDesc("Minimum heading level to include (1 = H1, 6 = H6)")
+		.setDesc("Minimum heading level to include (1 = h1, 6 = h6)")
 		.addDropdown((dropdown) => {
 			for (let i = 1; i <= 6; i++) {
 				dropdown.addOption(String(i), `H${i}`);
@@ -80,7 +80,7 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 
 	new Setting(containerEl)
 		.setName("Default max heading level")
-		.setDesc("Maximum heading level to include (1 = H1, 6 = H6)")
+		.setDesc("Maximum heading level to include (1 = h1, 6 = h6)")
 		.addDropdown((dropdown) => {
 			for (let i = 1; i <= 6; i++) {
 				dropdown.addOption(String(i), `H${i}`);
@@ -120,7 +120,7 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 					plugin.settings.defaultShapes = shapes;
 					await plugin.saveSettings();
 				});
-			text.inputEl.style.width = "200px";
+			text.inputEl.addClass("tg-input-width");
 		});
 
 	// Usage Examples
@@ -145,8 +145,8 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 			attr: { type: "button", title: "Copy to clipboard" },
 		});
 		copyBtn.textContent = "Copy";
-		copyBtn.addEventListener("click", async () => {
-			await navigator.clipboard.writeText(code);
+		copyBtn.addEventListener("click", () => {
+			void navigator.clipboard.writeText(code);
 			copyBtn.textContent = "Copied!";
 			setTimeout(() => {
 				copyBtn.textContent = "Copy";

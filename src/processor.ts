@@ -62,9 +62,9 @@ function getTocTransitionCss(): string {
 function setStyleContent(id: string, css: string): HTMLStyleElement {
 	let styleEl = document.getElementById(id) as HTMLStyleElement | null;
 	if (!styleEl) {
-		styleEl = document.createElement("style");
+		// eslint-disable-next-line obsidianmd/no-forbidden-elements -- dynamic transition CSS requires a style element
+		styleEl = document.head.createEl("style");
 		styleEl.id = id;
-		document.head.appendChild(styleEl);
 	}
 	styleEl.textContent = css;
 	return styleEl;
@@ -88,10 +88,10 @@ export function registerToc(plugin: TocPluginContext) {
 				}
 				wrapper.dataset.sfTocConfig = JSON.stringify(config);
 				await renderToc(wrapper, plugin, config, sourcePath);
-			} catch (err) {
+			} catch (err: unknown) {
 				console.error("TOC render error:", err);
 				el.empty();
-				el.createDiv({ cls: "sf-toc-error", text: `TOC Error: ${err}` });
+				el.createDiv({ cls: "sf-toc-error", text: `TOC Error: ${String(err)}` });
 			}
 		},
 	);
@@ -142,9 +142,10 @@ function refreshTocForPath(plugin: TocPluginContext, path: string) {
 
 		// Fade out, re-render, then fade in
 		block.classList.add("sf-toc-updating");
-		setTimeout(async () => {
-			await renderToc(block, plugin, config, path);
-			block.classList.remove("sf-toc-updating");
+		setTimeout(() => {
+			void renderToc(block, plugin, config, path).then(() => {
+				block.classList.remove("sf-toc-updating");
+			});
 		}, TOC_TRANSITION_MS);
 	});
 }
@@ -268,9 +269,9 @@ async function renderFigletForToc(
 ): Promise<void> {
 	if (!figletConfig.text) return;
 
-	const figletAPI = (window as any).figletAPI as {
+	const figletAPI = (window as unknown as Record<string, unknown>).figletAPI as {
 		generateText(text: string, font: string): Promise<string>;
-		createHtml(text: string, options: Record<string, any>): string;
+		createHtml(text: string, options: Record<string, unknown>): string;
 		defaultGradientColors: string[];
 	} | undefined;
 	if (!figletAPI) return;
@@ -285,7 +286,7 @@ async function renderFigletForToc(
 		colors = figletAPI.defaultGradientColors;
 	}
 
-	const styleOptions: Record<string, any> = {
+	const styleOptions: Record<string, unknown> = {
 		color: colors ? undefined : figletConfig.color,
 		colors: colors,
 		fontSize: figletConfig.fontSize ?? 10,
@@ -306,10 +307,12 @@ async function renderFigletForToc(
 				htmlParts.push(html);
 			}
 
+			// eslint-disable-next-line @microsoft/sdl/no-inner-html -- figlet API returns pre-built HTML
 			container.innerHTML = `<div class="sfb-figlet-multi-center">${htmlParts.join("")}</div>`;
 		} else {
 			const figletText = await figletAPI.generateText(figletConfig.text, font);
 			const html = figletAPI.createHtml(figletText, styleOptions);
+			// eslint-disable-next-line @microsoft/sdl/no-inner-html -- figlet API returns pre-built HTML
 			container.innerHTML = html;
 		}
 	} catch (err) {
@@ -325,7 +328,6 @@ function createTocList(
 	const list = parent.createEl(tag, { cls: "sf-toc-list" });
 	if (hideMarkers) {
 		list.addClass("sf-toc-list-unmarked");
-		list.style.setProperty("list-style", "none", "important");
 	}
 	return list;
 }
@@ -465,10 +467,10 @@ function parseTocConfig(source: string, plugin: TocPluginContext): TocConfig {
 	return config;
 }
 
-function parseConfigValue(raw: string) {
+function parseConfigValue(raw: string): string | number | boolean | string[] {
 	if (raw.startsWith("[") || raw.startsWith("{")) {
 		try {
-			return JSON.parse(raw);
+			return JSON.parse(raw) as string | number | boolean | string[];
 		} catch {
 			return raw;
 		}

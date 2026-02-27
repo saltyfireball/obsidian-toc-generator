@@ -1,6 +1,15 @@
 /* TOC Generator Plugin - styles.css */
 
+/* Hide list markers for numbered/shaped TOC lists */
+.sf-toc-list-unmarked {
+	list-style: none !important;
+}
+
 /* ===== Settings Page (tg- prefix) ===== */
+
+.tg-input-width {
+	width: 200px;
+}
 
 .tg-hint {
 	color: var(--text-muted);
