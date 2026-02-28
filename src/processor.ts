@@ -307,13 +307,26 @@ async function renderFigletForToc(
 				htmlParts.push(html);
 			}
 
-			// eslint-disable-next-line @microsoft/sdl/no-inner-html -- figlet API returns pre-built HTML
-			container.innerHTML = `<div class="sfb-figlet-multi-center">${htmlParts.join("")}</div>`;
+			container.empty();
+			const parsed = new DOMParser().parseFromString(
+				`<div class="sfb-figlet-multi-center">${htmlParts.join("")}</div>`,
+				"text/html",
+			);
+			const wrapper = parsed.body.firstElementChild;
+			if (wrapper) {
+				container.appendChild(document.importNode(wrapper, true));
+			}
 		} else {
 			const figletText = await figletAPI.generateText(figletConfig.text, font);
 			const html = figletAPI.createHtml(figletText, styleOptions);
-			// eslint-disable-next-line @microsoft/sdl/no-inner-html -- figlet API returns pre-built HTML
-			container.innerHTML = html;
+			container.empty();
+			const parsed = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
+			const nodes = parsed.body.firstElementChild?.childNodes;
+			if (nodes) {
+				for (const node of Array.from(nodes)) {
+					container.appendChild(document.importNode(node, true));
+				}
+			}
 		}
 	} catch (err) {
 		console.error("Error rendering figlet for TOC:", err);

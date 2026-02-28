@@ -36,9 +36,8 @@ export default class TocGeneratorPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- loadData returns any
-		const data = await this.loadData();
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, data as Partial<TocPluginSettings>);
+		const data = (await this.loadData()) as Partial<TocPluginSettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
 		// Ensure defaultShapes is always an array
 		if (!Array.isArray(this.settings.defaultShapes)) {
 			this.settings.defaultShapes = [];
