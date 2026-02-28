@@ -4,9 +4,6 @@ import type { TocPluginSettings } from "./main";
 // Transition duration in ms
 const TOC_TRANSITION_MS = 250;
 
-// Inject TOC transition styles once
-const TOC_STYLE_ID = "tg-toc-transitions";
-
 type TocPluginContext = Plugin & {
 	app: App;
 	settings: TocPluginSettings;
@@ -59,20 +56,20 @@ function getTocTransitionCss(): string {
 `;
 }
 
-function setStyleContent(id: string, css: string): HTMLStyleElement {
-	let styleEl = document.getElementById(id) as HTMLStyleElement | null;
-	if (!styleEl) {
-		// eslint-disable-next-line obsidianmd/no-forbidden-elements -- dynamic transition CSS requires a style element
-		styleEl = document.head.createEl("style");
-		styleEl.id = id;
+let tocStyleSheet: CSSStyleSheet | null = null;
+
+function setStyleContent(css: string): CSSStyleSheet {
+	if (!tocStyleSheet) {
+		tocStyleSheet = new CSSStyleSheet();
+		document.adoptedStyleSheets = [...document.adoptedStyleSheets, tocStyleSheet];
 	}
-	styleEl.textContent = css;
-	return styleEl;
+	tocStyleSheet.replaceSync(css);
+	return tocStyleSheet;
 }
 
 export function registerToc(plugin: TocPluginContext) {
 	// Inject transition styles
-	setStyleContent(TOC_STYLE_ID, getTocTransitionCss());
+	setStyleContent(getTocTransitionCss());
 
 	plugin.registerMarkdownCodeBlockProcessor(
 		plugin.settings.codeBlockId,
@@ -112,7 +109,10 @@ export function registerToc(plugin: TocPluginContext) {
 
 	// Cleanup transition styles on unload
 	plugin.register(() => {
-		document.getElementById(TOC_STYLE_ID)?.remove();
+		if (tocStyleSheet) {
+			document.adoptedStyleSheets = document.adoptedStyleSheets.filter(s => s !== tocStyleSheet);
+			tocStyleSheet = null;
+		}
 	});
 }
 
