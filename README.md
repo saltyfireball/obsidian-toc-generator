@@ -90,13 +90,32 @@ All defaults are configurable from the plugin settings tab:
 
 ## Installation
 
-### From Obsidian Community Plugins
+### Obsidian Community Plugin (pending)
 
-Search for "TOC Generator" in Settings > Community plugins > Browse.
+This plugin has been submitted for review to the Obsidian community plugin directory. Once approved, you will be able to install it directly from **Settings > Community plugins > Browse** by searching for "TOC Generator".
+
+### Using BRAT
+
+You can install this plugin right now using the [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin:
+
+1. Install BRAT from **Settings > Community plugins > Browse** (search for "BRAT" by TfTHacker)
+2. Open the BRAT settings
+3. Under the **Beta plugins** section, click **Add beta plugin**
+
+   ![BRAT beta plugin list](assets/brat_example_beta_plugin_list.png)
+
+4. In the overlay, enter this plugin's repository: `https://github.com/saltyfireball/obsidian-toc-generator` (or just `saltyfireball/obsidian-toc-generator`)
+
+   ![BRAT add beta plugin](assets/brat_example_beta_modal.png)
+
+5. Leave the version set to latest
+
+   ![BRAT beta plugin filled](assets/brat_example_beta_modal_filled.png)
+
+6. Click **Add plugin**
 
 ### Manual
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the latest release
-2. Create a folder `toc-generator` inside your vault's `.obsidian/plugins/` directory
-3. Copy the downloaded files into that folder
-4. Enable the plugin in Settings > Community plugins
+1. Download the latest release from the [Releases](https://github.com/saltyfireball/obsidian-toc-generator/releases) page
+2. Copy `main.js`, `manifest.json`, and `styles.css` into your vault's `.obsidian/plugins/toc-generator/` directory
+3. Enable the plugin in **Settings > Community plugins**
