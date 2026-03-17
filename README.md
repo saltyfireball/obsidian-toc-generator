@@ -8,6 +8,10 @@
 
 An Obsidian plugin that generates a table of contents from headings in your notes using a code block syntax.
 
+<p align="center">
+  <img src="assets/example_rendered_toc.png" width="600" />
+</p>
+
 ## Features
 
 - Renders a live-updating table of contents from the current note's headings
@@ -57,6 +61,10 @@ These require the Figlet Generator plugin to be installed. Place the text to ren
 
 ### Examples
 
+<p align="center">
+  <img src="assets/example_toc_code_block.png" width="600" />
+</p>
+
 Filtered numbered TOC:
 
 ````markdown
@@ -68,7 +76,11 @@ numbered: true
 ```
 ````
 
-TOC with Figlet header:
+TOC with Figlet header (requires [Figlet Generator](https://github.com/saltyfireball/obsidian-figlet-generator)):
+
+<p align="center">
+  <img src="assets/example_toc_figlet_daily.png" width="600" />
+</p>
 
 ````markdown
 ```my-toc
