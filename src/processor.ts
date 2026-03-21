@@ -356,15 +356,32 @@ function scrollToHeading(plugin: TocPluginContext, headingText: string): void {
 	const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
 	if (!view?.file) return;
 
-	const cache = plugin.app.metadataCache.getFileCache(view.file);
-	if (!cache?.headings) return;
+	const mode = view.getMode();
 
-	const match = cache.headings.find((h) => h.heading === headingText);
-	if (!match?.position) return;
+	if (mode === "source") {
+		// Edit / Live Preview mode: use editor API
+		const cache = plugin.app.metadataCache.getFileCache(view.file);
+		if (!cache?.headings) return;
 
-	const line = match.position.start.line;
-	view.editor.setCursor(line, 0);
-	view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+		const match = cache.headings.find((h) => h.heading === headingText);
+		if (!match?.position) return;
+
+		const line = match.position.start.line;
+		view.editor.setCursor(line, 0);
+		view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+	} else {
+		// Reading / Preview mode: find heading element in DOM and scroll to it
+		const previewEl = view.previewMode?.containerEl;
+		if (!previewEl) return;
+
+		const headingEls = previewEl.querySelectorAll("h1, h2, h3, h4, h5, h6");
+		for (const el of Array.from(headingEls)) {
+			if (el.textContent?.trim() === headingText.trim()) {
+				el.scrollIntoView({ behavior: "smooth", block: "start" });
+				return;
+			}
+		}
+	}
 }
 
 function getHeadings(plugin: TocPluginContext, sourcePath?: string) {
