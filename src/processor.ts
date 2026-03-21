@@ -249,18 +249,31 @@ async function renderToc(
 		}
 
 		const displayHeading = stripChars(heading.heading, config.remove_chars);
+		const headingLine = heading.position?.start?.line ?? -1;
+
 		const link = item.createEl("a", {
 			cls: "sf-toc-link",
 			text: displayHeading,
-			href: `#${heading.heading}`,
 		});
-		link.dataset.href = `#${heading.heading}`;
-		link.addClass("internal-link");
-
 		link.addEventListener("click", (e: MouseEvent) => {
 			e.preventDefault();
-			e.stopPropagation();
-			scrollToHeading(plugin, heading.heading);
+			if (headingLine < 0) return;
+			const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+			if (!view) return;
+
+			const mode = view.getMode();
+			if (mode === "source") {
+				view.editor.setCursor(headingLine, 0);
+				view.editor.scrollIntoView(
+					{ from: { line: headingLine, ch: 0 }, to: { line: headingLine, ch: 0 } },
+					true,
+				);
+			} else {
+				const currentMode = view.currentMode as unknown as { applyScroll?: (line: number) => void };
+				if (typeof currentMode.applyScroll === "function") {
+					currentMode.applyScroll(headingLine);
+				}
+			}
 		});
 
 		lastItem = item;
@@ -352,45 +365,18 @@ function createTocList(
 	return list;
 }
 
-function scrollToHeading(plugin: TocPluginContext, headingText: string): void {
-	const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
-	if (!view?.file) return;
-
-	const mode = view.getMode();
-
-	if (mode === "source") {
-		// Edit / Live Preview mode: use editor API
-		const cache = plugin.app.metadataCache.getFileCache(view.file);
-		if (!cache?.headings) return;
-
-		const match = cache.headings.find((h) => h.heading === headingText);
-		if (!match?.position) return;
-
-		const line = match.position.start.line;
-		view.editor.setCursor(line, 0);
-		view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
-	} else {
-		// Reading / Preview mode: find heading element in DOM and scroll to it
-		const previewEl = view.previewMode?.containerEl;
-		if (!previewEl) return;
-
-		const headingEls = previewEl.querySelectorAll("h1, h2, h3, h4, h5, h6");
-		for (const el of Array.from(headingEls)) {
-			if (el.textContent?.trim() === headingText.trim()) {
-				el.scrollIntoView({ behavior: "smooth", block: "start" });
-				return;
-			}
-		}
-	}
+interface HeadingEntry {
+	heading: string;
+	level: number;
+	position?: { start: { line: number; col: number; offset: number } };
 }
 
-function getHeadings(plugin: TocPluginContext, sourcePath?: string) {
-	if (!sourcePath) return [] as { heading: string; level: number }[];
+function getHeadings(plugin: TocPluginContext, sourcePath?: string): HeadingEntry[] {
+	if (!sourcePath) return [];
 	const file = plugin.app.vault.getAbstractFileByPath(sourcePath);
-	if (!(file instanceof TFile))
-		return [] as { heading: string; level: number }[];
+	if (!(file instanceof TFile)) return [];
 	const cache = plugin.app.metadataCache.getFileCache(file);
-	return (cache?.headings || []) as { heading: string; level: number }[];
+	return (cache?.headings ?? []) as HeadingEntry[];
 }
 
 type NormalizedTocConfig = Required<Omit<TocConfig, "figlet">> & {

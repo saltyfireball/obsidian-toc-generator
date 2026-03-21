@@ -5,6 +5,61 @@
 	list-style: none !important;
 }
 
+/* ===== Outline Panel ===== */
+
+.sf-outline-container {
+	padding: 8px 0;
+	overflow-y: auto;
+}
+
+.sf-outline-list {
+	display: flex;
+	flex-direction: column;
+}
+
+.sf-outline-item {
+	padding: 3px 12px;
+	cursor: pointer;
+}
+
+.sf-outline-item:hover {
+	background: var(--background-modifier-hover);
+}
+
+.sf-outline-link {
+	font-size: 13px;
+	color: var(--text-normal);
+	cursor: pointer;
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sf-outline-level-1 .sf-outline-link {
+	font-weight: 600;
+}
+
+.sf-outline-level-2 .sf-outline-link {
+	font-weight: 500;
+}
+
+.sf-outline-empty {
+	padding: 16px 12px;
+	color: var(--text-muted);
+	font-size: 13px;
+	font-style: italic;
+}
+
+/* Mobile */
+.is-mobile .sf-outline-item {
+	padding: 6px 12px;
+}
+
+.is-mobile .sf-outline-link {
+	font-size: 15px;
+}
+
 /* ===== Settings Page (tg- prefix) ===== */
 
 .tg-input-width {
