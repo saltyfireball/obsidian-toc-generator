@@ -1,4 +1,4 @@
-import { App, Plugin, TFile } from "obsidian";
+import { App, MarkdownView, Plugin, TFile } from "obsidian";
 import type { TocPluginSettings } from "./main";
 
 // Transition duration in ms
@@ -256,6 +256,13 @@ async function renderToc(
 		});
 		link.dataset.href = `#${heading.heading}`;
 		link.addClass("internal-link");
+
+		link.addEventListener("click", (e: MouseEvent) => {
+			e.preventDefault();
+			e.stopPropagation();
+			scrollToHeading(plugin, heading.heading);
+		});
+
 		lastItem = item;
 	}
 }
@@ -343,6 +350,21 @@ function createTocList(
 		list.addClass("sf-toc-list-unmarked");
 	}
 	return list;
+}
+
+function scrollToHeading(plugin: TocPluginContext, headingText: string): void {
+	const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+	if (!view?.file) return;
+
+	const cache = plugin.app.metadataCache.getFileCache(view.file);
+	if (!cache?.headings) return;
+
+	const match = cache.headings.find((h) => h.heading === headingText);
+	if (!match?.position) return;
+
+	const line = match.position.start.line;
+	view.editor.setCursor(line, 0);
+	view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
 }
 
 function getHeadings(plugin: TocPluginContext, sourcePath?: string) {
