@@ -32,6 +32,8 @@ type TocConfig = {
 	shapes?: string[];
 	remove_chars?: string[];
 	backtotop?: boolean;
+	includeEmbeds?: boolean;
+	embedDepth?: number;
 	figlet?: TocFigletConfig;
 };
 
@@ -90,6 +92,13 @@ export function registerToc(plugin: TocPluginContext) {
 				wrapper.dataset.sfTocConfig = JSON.stringify(config);
 				await renderToc(wrapper, plugin, config, sourcePath);
 
+				if (config.includeEmbeds) {
+					const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+					if (view) {
+						view.contentEl.classList.add("sf-hide-embed-tocs");
+					}
+				}
+
 				if (config.backtotop) {
 					const normalized = normalizeConfig(config, plugin);
 					wrapper.dataset.sfTocBacktotop = "true";
@@ -105,7 +114,6 @@ export function registerToc(plugin: TocPluginContext) {
 
 						// Enable CM6 back-to-top decorations for edit mode
 						const editorView = (view.editor as unknown as { cm?: EditorView }).cm;
-						console.debug("[BTT CM6] editorView:", editorView instanceof EditorView, "mode:", view.getMode());
 						if (editorView instanceof EditorView) {
 							editorView.dispatch({
 								effects: setBackToTopConfig.of({
@@ -114,7 +122,6 @@ export function registerToc(plugin: TocPluginContext) {
 									maxLevel: normalized.maxLevel,
 								}),
 							});
-							console.debug("[BTT CM6] Dispatched config: enabled=true min=", normalized.minLevel, "max=", normalized.maxLevel);
 						}
 					}
 				}
@@ -133,6 +140,9 @@ export function registerToc(plugin: TocPluginContext) {
 				htmlEl.classList.remove("sf-has-backtotop");
 				htmlEl.removeAttribute("data-sf-btt-min");
 				htmlEl.removeAttribute("data-sf-btt-max");
+			});
+			document.querySelectorAll(".sf-hide-embed-tocs").forEach((htmlEl) => {
+				htmlEl.classList.remove("sf-hide-embed-tocs");
 			});
 			// Disable CM6 decorations
 			const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
@@ -307,11 +317,26 @@ async function renderToc(
 		container.createDiv({ cls: "sf-toc-title", text: config.title });
 	}
 
-	const headings = getHeadings(plugin, sourcePath);
+	let headings = getHeadings(plugin, sourcePath);
+
+	// Merge embedded file headings if includeEmbeds is enabled
+	if (config.includeEmbeds && sourcePath) {
+		headings = getEmbedsWithHeadings(
+			plugin,
+			sourcePath,
+			headings,
+			config.embedDepth,
+			0,
+			new Set<string>(),
+		);
+	}
+
 	const filtered = headings.filter(
-		(heading) =>
-			heading.level >= config.minLevel &&
-			heading.level <= config.maxLevel,
+		(heading) => {
+			// Embed headings bypass level filtering since their levels are already shifted
+			if (heading.isEmbed) return true;
+			return heading.level >= config.minLevel && heading.level <= config.maxLevel;
+		},
 	);
 
 	// Store headings signature for change detection (prevents unnecessary re-renders)
@@ -378,10 +403,11 @@ async function renderToc(
 
 		const displayHeading = stripChars(heading.heading, config.remove_chars);
 		const headingLine = heading.position?.start?.line ?? -1;
-		const tocSourcePath = sourcePath;
+		const headingSourcePath = heading.sourcePath ?? sourcePath;
+		const isEmbedHeading = heading.isEmbed === true;
 
 		const link = item.createEl("a", {
-			cls: "sf-toc-link",
+			cls: "sf-toc-link" + (isEmbedHeading ? " sf-toc-link-embed" : ""),
 			text: displayHeading,
 		});
 		const headingText = heading.heading;
@@ -389,28 +415,38 @@ async function renderToc(
 			e.preventDefault();
 
 			const activeView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
-			const isEmbed = tocSourcePath && activeView?.file?.path !== tocSourcePath;
+			if (!activeView) return;
 
-			if (isEmbed) {
-				// Find the heading inside the embed container in the parent DOM
-				const tocEl = link.closest(".sf-toc-block");
-				const embedEl = tocEl?.closest(".internal-embed") ?? tocEl?.closest(".markdown-embed");
-				const searchRoot = embedEl?.parentElement ?? activeView?.contentEl;
-				if (searchRoot) {
-					const headingEls = searchRoot.querySelectorAll("h1, h2, h3, h4, h5, h6");
-					for (const el of Array.from(headingEls)) {
-						const dh = el.getAttribute("data-heading");
-						const tc = el.textContent?.trim() ?? "";
-						if (dh === headingText || tc === headingText) {
-							el.scrollIntoView({ behavior: "smooth", block: "start" });
-							return;
-						}
+			const isEmbed = headingSourcePath && activeView.file?.path !== headingSourcePath;
+
+			if (isEmbed && headingSourcePath) {
+				// Try to find the embed container for this source file
+				const embeds = activeView.contentEl.querySelectorAll(".internal-embed, .markdown-embed");
+				let targetContainer: Element | null = null;
+				for (const embedEl of Array.from(embeds)) {
+					const src = embedEl.getAttribute("src") ?? "";
+					if (src.includes(headingSourcePath.replace(/\.md$/, ""))) {
+						targetContainer = embedEl;
+						break;
+					}
+				}
+
+				// Search in the embed container, or fall back to full view
+				const searchRoot = targetContainer ?? activeView.contentEl;
+				const headingEls = searchRoot.querySelectorAll("h1, h2, h3, h4, h5, h6");
+				for (const el of Array.from(headingEls)) {
+					if (el.closest(".sf-toc")) continue;
+					const dh = el.getAttribute("data-heading");
+					const tc = el.textContent?.trim() ?? "";
+					if (dh === headingText || tc === headingText) {
+						el.scrollIntoView({ behavior: "smooth", block: "start" });
+						return;
 					}
 				}
 				return;
 			}
 
-			if (!activeView || headingLine < 0) return;
+			if (headingLine < 0) return;
 			scrollInView(activeView, headingLine);
 		});
 
@@ -523,6 +559,13 @@ interface HeadingEntry {
 	heading: string;
 	level: number;
 	position?: { start: { line: number; col: number; offset: number } };
+	sourcePath?: string;
+	isEmbed?: boolean;
+}
+
+interface EmbedEntry {
+	link: string;
+	position: { start: { line: number; offset: number }; end: { line: number; offset: number } };
 }
 
 function getHeadings(plugin: TocPluginContext, sourcePath?: string): HeadingEntry[] {
@@ -531,6 +574,160 @@ function getHeadings(plugin: TocPluginContext, sourcePath?: string): HeadingEntr
 	if (!(file instanceof TFile)) return [];
 	const cache = plugin.app.metadataCache.getFileCache(file);
 	return (cache?.headings ?? []) as HeadingEntry[];
+}
+
+function getEmbedsWithHeadings(
+	plugin: TocPluginContext,
+	sourcePath: string,
+	parentHeadings: HeadingEntry[],
+	maxDepth: number,
+	currentDepth: number,
+	visitedPaths: Set<string>,
+): HeadingEntry[] {
+	if (currentDepth >= maxDepth) return parentHeadings;
+	if (visitedPaths.has(sourcePath)) return parentHeadings;
+	visitedPaths.add(sourcePath);
+
+	const file = plugin.app.vault.getAbstractFileByPath(sourcePath);
+	if (!(file instanceof TFile)) return parentHeadings;
+
+	const cache = plugin.app.metadataCache.getFileCache(file);
+	const embeds = (cache?.embeds ?? []) as EmbedEntry[];
+	if (embeds.length === 0) return parentHeadings;
+
+	// Build result with embeds inserted at the right positions
+	const result: HeadingEntry[] = [];
+	let embedIndex = 0;
+
+	for (let i = 0; i < parentHeadings.length; i++) {
+		const heading = parentHeadings[i];
+		result.push(heading);
+
+		// Find the line range between this heading and the next
+		const headingLine = heading.position?.start?.line ?? 0;
+		const nextHeadingLine = parentHeadings[i + 1]?.position?.start?.line ?? Infinity;
+
+		// Insert any embeds that fall between this heading and the next
+		while (embedIndex < embeds.length) {
+			const embed = embeds[embedIndex];
+			const embedLine = embed.position.start.line;
+			if (embedLine <= headingLine) {
+				embedIndex++;
+				continue;
+			}
+			if (embedLine >= nextHeadingLine) break;
+
+			// Resolve the embed link to a file
+			const linkPath = embed.link.split("#")[0].split("|")[0];
+			const embeddedFile = plugin.app.metadataCache.getFirstLinkpathDest(linkPath, sourcePath);
+			if (!embeddedFile || !(embeddedFile instanceof TFile) || embeddedFile.extension !== "md") {
+				embedIndex++;
+				continue;
+			}
+
+			if (visitedPaths.has(embeddedFile.path)) {
+				embedIndex++;
+				continue;
+			}
+
+			// Get the embedded file's headings
+			const embeddedCache = plugin.app.metadataCache.getFileCache(embeddedFile);
+			let embedHeadings = (embeddedCache?.headings ?? []) as HeadingEntry[];
+
+			// Check if the embed link targets a specific heading (e.g., File#Heading)
+			const hashIndex = embed.link.indexOf("#");
+			if (hashIndex !== -1) {
+				const targetHeading = embed.link.substring(hashIndex + 1).split("|")[0];
+				// Filter to headings under the targeted heading
+				if (targetHeading.startsWith("^")) {
+					// Block reference, skip headings
+					embedIndex++;
+					continue;
+				}
+				const startIdx = embedHeadings.findIndex((h) => h.heading === targetHeading);
+				if (startIdx !== -1) {
+					const startLevel = embedHeadings[startIdx].level;
+					const endIdx = embedHeadings.findIndex(
+						(h, idx) => idx > startIdx && h.level <= startLevel,
+					);
+					embedHeadings = endIdx === -1
+						? embedHeadings.slice(startIdx)
+						: embedHeadings.slice(startIdx, endIdx);
+				}
+			}
+
+			if (embedHeadings.length === 0) {
+				embedIndex++;
+				continue;
+			}
+
+			// Calculate level shift: embed's top-level headings should be one level below the parent heading
+			const embedMinLevel = Math.min(...embedHeadings.map((h) => h.level));
+			const targetLevel = heading.level + 1;
+			const levelShift = targetLevel - embedMinLevel;
+
+			// Shift levels and mark as embed headings
+			const shiftedHeadings: HeadingEntry[] = embedHeadings.map((h) => ({
+				heading: h.heading,
+				level: Math.min(6, h.level + levelShift),
+				position: h.position,
+				sourcePath: embeddedFile.path,
+				isEmbed: true,
+			}));
+
+			// Recursively include embeds from the embedded file
+			const withNestedEmbeds = getEmbedsWithHeadings(
+				plugin,
+				embeddedFile.path,
+				shiftedHeadings,
+				maxDepth,
+				currentDepth + 1,
+				visitedPaths,
+			);
+
+			result.push(...withNestedEmbeds);
+			embedIndex++;
+		}
+	}
+
+	// Handle embeds that come before any heading
+	while (embedIndex < embeds.length) {
+		const embed = embeds[embedIndex];
+		const linkPath = embed.link.split("#")[0].split("|")[0];
+		const embeddedFile = plugin.app.metadataCache.getFirstLinkpathDest(linkPath, sourcePath);
+		if (embeddedFile && embeddedFile instanceof TFile && embeddedFile.extension === "md" && !visitedPaths.has(embeddedFile.path)) {
+			const embeddedCache = plugin.app.metadataCache.getFileCache(embeddedFile);
+			const embedHeadings = (embeddedCache?.headings ?? []) as HeadingEntry[];
+			if (embedHeadings.length > 0) {
+				const embedMinLevel = Math.min(...embedHeadings.map((h) => h.level));
+				const lastHeading = result[result.length - 1];
+				const targetLevel = lastHeading ? lastHeading.level + 1 : 2;
+				const levelShift = targetLevel - embedMinLevel;
+
+				const shiftedHeadings: HeadingEntry[] = embedHeadings.map((h) => ({
+					heading: h.heading,
+					level: Math.min(6, h.level + levelShift),
+					position: h.position,
+					sourcePath: embeddedFile.path,
+					isEmbed: true,
+				}));
+
+				const withNestedEmbeds = getEmbedsWithHeadings(
+					plugin,
+					embeddedFile.path,
+					shiftedHeadings,
+					maxDepth,
+					currentDepth + 1,
+					visitedPaths,
+				);
+
+				result.push(...withNestedEmbeds);
+			}
+		}
+		embedIndex++;
+	}
+
+	return result;
 }
 
 type NormalizedTocConfig = Required<Omit<TocConfig, "figlet">> & {
@@ -551,6 +748,8 @@ function normalizeConfig(config: TocConfig, plugin: TocPluginContext): Normalize
 			? config.remove_chars
 			: defaults.remove_chars,
 		backtotop: config.backtotop ?? false,
+		includeEmbeds: config.includeEmbeds ?? false,
+		embedDepth: config.embedDepth ?? 2,
 		figlet: config.figlet,
 	};
 

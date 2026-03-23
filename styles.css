@@ -70,6 +70,12 @@
 	display: none;
 }
 
+/* Hide embedded TOC blocks when parent has includeEmbeds */
+.sf-hide-embed-tocs .internal-embed .sf-toc-block,
+.sf-hide-embed-tocs .markdown-embed .sf-toc-block {
+	display: none;
+}
+
 /* CM6 back-to-top widget (edit/live preview mode) */
 .sf-back-to-toc-cm {
 	display: inline-flex;
