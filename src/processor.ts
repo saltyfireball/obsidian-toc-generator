@@ -250,33 +250,59 @@ async function renderToc(
 
 		const displayHeading = stripChars(heading.heading, config.remove_chars);
 		const headingLine = heading.position?.start?.line ?? -1;
+		const tocSourcePath = sourcePath;
 
 		const link = item.createEl("a", {
 			cls: "sf-toc-link",
 			text: displayHeading,
 		});
+		const headingText = heading.heading;
 		link.addEventListener("click", (e: MouseEvent) => {
 			e.preventDefault();
-			if (headingLine < 0) return;
-			const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
-			if (!view) return;
 
-			const mode = view.getMode();
-			if (mode === "source") {
-				view.editor.setCursor(headingLine, 0);
-				view.editor.scrollIntoView(
-					{ from: { line: headingLine, ch: 0 }, to: { line: headingLine, ch: 0 } },
-					true,
-				);
-			} else {
-				const currentMode = view.currentMode as unknown as { applyScroll?: (line: number) => void };
-				if (typeof currentMode.applyScroll === "function") {
-					currentMode.applyScroll(headingLine);
+			const activeView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+			const isEmbed = tocSourcePath && activeView?.file?.path !== tocSourcePath;
+
+			if (isEmbed) {
+				// Find the heading inside the embed container in the parent DOM
+				const tocEl = link.closest(".sf-toc-block");
+				const embedEl = tocEl?.closest(".internal-embed") ?? tocEl?.closest(".markdown-embed");
+				const searchRoot = embedEl?.parentElement ?? activeView?.contentEl;
+				if (searchRoot) {
+					const headingEls = searchRoot.querySelectorAll("h1, h2, h3, h4, h5, h6");
+					for (const el of Array.from(headingEls)) {
+						const dh = el.getAttribute("data-heading");
+						const tc = el.textContent?.trim() ?? "";
+						if (dh === headingText || tc === headingText) {
+							el.scrollIntoView({ behavior: "smooth", block: "start" });
+							return;
+						}
+					}
 				}
+				return;
 			}
+
+			if (!activeView || headingLine < 0) return;
+			scrollInView(activeView, headingLine);
 		});
 
 		lastItem = item;
+	}
+}
+
+function scrollInView(view: MarkdownView, line: number): void {
+	const mode = view.getMode();
+	if (mode === "source") {
+		view.editor.setCursor(line, 0);
+		view.editor.scrollIntoView(
+			{ from: { line, ch: 0 }, to: { line, ch: 0 } },
+			true,
+		);
+	} else {
+		const currentMode = view.currentMode as unknown as { applyScroll?: (line: number) => void };
+		if (typeof currentMode.applyScroll === "function") {
+			currentMode.applyScroll(line);
+		}
 	}
 }
 
