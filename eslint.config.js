@@ -18,6 +18,7 @@ export default defineConfig([
         console: "readonly",
         navigator: "readonly",
         CSS: "readonly",
+        requestAnimationFrame: "readonly",
       },
     },
     rules: {

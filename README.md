@@ -20,6 +20,8 @@ An Obsidian plugin that generates a table of contents from headings in your note
 - Custom bullet shapes that cycle through entries
 - Character stripping from heading text
 - Optional Figlet ASCII art titles (requires [Figlet Generator](https://github.com/saltyfireball/obsidian-figlet-generator) plugin)
+- **Outline panel** -- a sidebar outline view with reliable heading navigation
+- **Pre-render mode** -- force all lazy-loaded content to render on note open for instant TOC/outline navigation
 - Fade animation on content updates
 - Fully configurable code block ID and defaults via settings
 
@@ -91,6 +93,45 @@ figlet-color: rainbow
 Contents
 ```
 ````
+
+## Outline Panel
+
+The plugin includes its own outline sidebar that provides reliable heading navigation in both edit and preview modes.
+
+Open it via the command palette: **TOC Generator: Open outline panel**
+
+The outline:
+- Lists all headings from the current note with indentation by level
+- Clicking a heading scrolls directly to it using line-based navigation
+- Works in edit mode (live preview) and reading/preview mode
+- Updates automatically when you switch notes or edit headings
+- Handles special characters in headings (colons, `#`, parentheses, etc.)
+
+## Pre-render Mode
+
+Obsidian lazy-renders content in both reading view and live preview -- content below the fold isn't rendered until you scroll to it. This causes TOC and outline links to scroll to the wrong position on long notes with embeds, images, and other dynamic content.
+
+Pre-render mode forces all content to load when a note opens, so navigation works instantly.
+
+### Per-note frontmatter
+
+Add `prerender: true` to any note's frontmatter:
+
+```yaml
+---
+prerender: true
+---
+```
+
+When the note opens, the plugin rapidly scrolls through the entire document behind the scenes, forcing Obsidian to render all lazy-loaded content, then returns to the original scroll position. After that, all TOC links and outline clicks land in the correct position immediately.
+
+### Command palette
+
+You can also trigger this on-demand without frontmatter:
+
+**TOC Generator: Force render all content in current note**
+
+This works in both reading view and live preview.
 
 ## Settings
 
