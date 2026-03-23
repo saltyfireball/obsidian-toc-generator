@@ -1,5 +1,7 @@
 import { App, MarkdownView, Plugin, TFile } from "obsidian";
+import { EditorView } from "@codemirror/view";
 import type { TocPluginSettings } from "./main";
+import { setBackToTopConfig } from "./backtotop-extension";
 
 // Transition duration in ms
 const TOC_TRANSITION_MS = 250;
@@ -95,12 +97,25 @@ export function registerToc(plugin: TocPluginContext) {
 					wrapper.dataset.sfTocBttMax = String(normalized.maxLevel);
 
 					// Add class to persistent parent so CSS works even when TOC is lazy-unloaded
-					// Use workspace API since el isn't in DOM yet
 					const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
 					if (view) {
 						view.contentEl.classList.add("sf-has-backtotop");
 						view.contentEl.setAttribute("data-sf-btt-min", String(normalized.minLevel));
 						view.contentEl.setAttribute("data-sf-btt-max", String(normalized.maxLevel));
+
+						// Enable CM6 back-to-top decorations for edit mode
+						const editorView = (view.editor as unknown as { cm?: EditorView }).cm;
+						console.debug("[BTT CM6] editorView:", editorView instanceof EditorView, "mode:", view.getMode());
+						if (editorView instanceof EditorView) {
+							editorView.dispatch({
+								effects: setBackToTopConfig.of({
+									enabled: true,
+									minLevel: normalized.minLevel,
+									maxLevel: normalized.maxLevel,
+								}),
+							});
+							console.debug("[BTT CM6] Dispatched config: enabled=true min=", normalized.minLevel, "max=", normalized.maxLevel);
+						}
 					}
 				}
 			} catch (err: unknown) {
@@ -111,14 +126,28 @@ export function registerToc(plugin: TocPluginContext) {
 		},
 	);
 
-	// Clean up backtotop class when switching files
+	// Clean up backtotop class and CM6 state when switching files
 	plugin.registerEvent(
 		plugin.app.workspace.on("active-leaf-change", () => {
-			document.querySelectorAll(".sf-has-backtotop").forEach((el) => {
-				el.classList.remove("sf-has-backtotop");
-				el.removeAttribute("data-sf-btt-min");
-				el.removeAttribute("data-sf-btt-max");
+			document.querySelectorAll(".sf-has-backtotop").forEach((htmlEl) => {
+				htmlEl.classList.remove("sf-has-backtotop");
+				htmlEl.removeAttribute("data-sf-btt-min");
+				htmlEl.removeAttribute("data-sf-btt-max");
 			});
+			// Disable CM6 decorations
+			const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+			if (view) {
+				const editorView = (view.editor as unknown as { cm?: EditorView }).cm;
+				if (editorView instanceof EditorView) {
+					editorView.dispatch({
+						effects: setBackToTopConfig.of({
+							enabled: false,
+							minLevel: 1,
+							maxLevel: 6,
+						}),
+					});
+				}
+			}
 		}),
 	);
 

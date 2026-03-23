@@ -2,6 +2,7 @@ import { Plugin, PluginSettingTab, App } from "obsidian";
 import { registerToc } from "./processor";
 import { registerOutlineView } from "./outline-view";
 import { registerPrerender } from "./prerender";
+import { createBackToTopExtension } from "./backtotop-extension";
 import { renderSettingsTab } from "./settings-ui";
 
 export interface TocPluginSettings {
@@ -36,6 +37,7 @@ export default class TocGeneratorPlugin extends Plugin {
 
 		this.addSettingTab(new TocSettingTab(this.app, this));
 
+		this.registerEditorExtension(createBackToTopExtension());
 		registerOutlineView(this.app, this);
 		registerPrerender(this.app, this);
 	}
