@@ -29,6 +29,7 @@ type TocConfig = {
 	numbered?: boolean;
 	shapes?: string[];
 	remove_chars?: string[];
+	backtotop?: boolean;
 	figlet?: TocFigletConfig;
 };
 
@@ -67,6 +68,7 @@ function setStyleContent(css: string): CSSStyleSheet {
 	return tocStyleSheet;
 }
 
+
 export function registerToc(plugin: TocPluginContext) {
 	// Inject transition styles
 	setStyleContent(getTocTransitionCss());
@@ -85,12 +87,39 @@ export function registerToc(plugin: TocPluginContext) {
 				}
 				wrapper.dataset.sfTocConfig = JSON.stringify(config);
 				await renderToc(wrapper, plugin, config, sourcePath);
+
+				if (config.backtotop) {
+					const normalized = normalizeConfig(config, plugin);
+					wrapper.dataset.sfTocBacktotop = "true";
+					wrapper.dataset.sfTocBttMin = String(normalized.minLevel);
+					wrapper.dataset.sfTocBttMax = String(normalized.maxLevel);
+
+					// Add class to persistent parent so CSS works even when TOC is lazy-unloaded
+					// Use workspace API since el isn't in DOM yet
+					const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+					if (view) {
+						view.contentEl.classList.add("sf-has-backtotop");
+						view.contentEl.setAttribute("data-sf-btt-min", String(normalized.minLevel));
+						view.contentEl.setAttribute("data-sf-btt-max", String(normalized.maxLevel));
+					}
+				}
 			} catch (err: unknown) {
 				console.error("TOC render error:", err);
 				el.empty();
 				el.createDiv({ cls: "sf-toc-error", text: `TOC Error: ${String(err)}` });
 			}
 		},
+	);
+
+	// Clean up backtotop class when switching files
+	plugin.registerEvent(
+		plugin.app.workspace.on("active-leaf-change", () => {
+			document.querySelectorAll(".sf-has-backtotop").forEach((el) => {
+				el.classList.remove("sf-has-backtotop");
+				el.removeAttribute("data-sf-btt-min");
+				el.removeAttribute("data-sf-btt-max");
+			});
+		}),
 	);
 
 	plugin.registerEvent(
@@ -106,6 +135,76 @@ export function registerToc(plugin: TocPluginContext) {
 			refreshTocForPath(plugin, file.path);
 		}),
 	);
+
+	// Back-to-top: MutationObserver adds hidden buttons to ALL headings as they appear.
+	// Visibility is controlled via CSS :has() based on .sf-toc[data-sf-toc-backtotop].
+	// This catches lazy-rendered headings that appear on scroll.
+	const addButtonToHeading = (headingEl: Element) => {
+		if (headingEl.querySelector(".sf-back-to-toc")) return;
+		if (headingEl.closest(".sf-toc")) return;
+
+		const btn = document.createElement("span");
+		btn.className = "sf-back-to-toc";
+		btn.setAttribute("aria-label", "Back to table of contents");
+		btn.textContent = "\u2191";
+		btn.addEventListener("click", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+			if (!view) return;
+			scrollInView(view, 0);
+		});
+		headingEl.appendChild(btn);
+	};
+
+	const processNode = (node: Node) => {
+		if (!(node instanceof HTMLElement)) return;
+		// Check if the node itself is a heading
+		if (/^H[1-6]$/.test(node.tagName)) {
+			addButtonToHeading(node);
+		}
+		// Check children for headings
+		const headings = node.querySelectorAll("h1, h2, h3, h4, h5, h6");
+		headings.forEach(addButtonToHeading);
+	};
+
+	const headingObserver = new MutationObserver((mutations) => {
+		for (const mutation of mutations) {
+			for (const added of Array.from(mutation.addedNodes)) {
+				processNode(added);
+			}
+		}
+	});
+
+	headingObserver.observe(document.body, { childList: true, subtree: true });
+
+	// Process any headings already in the DOM
+	document.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(addButtonToHeading);
+
+	plugin.register(() => {
+		headingObserver.disconnect();
+	});
+
+	plugin.addCommand({
+		id: "debug-backtotop",
+		name: "Debug: count back-to-top buttons",
+		callback: () => {
+			const allHeadings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+			const withBtn = document.querySelectorAll("h1 .sf-back-to-toc, h2 .sf-back-to-toc, h3 .sf-back-to-toc, h4 .sf-back-to-toc, h5 .sf-back-to-toc, h6 .sf-back-to-toc");
+			const parents = document.querySelectorAll(".sf-has-backtotop");
+			const visibleBtns = document.querySelectorAll(".sf-back-to-toc");
+			let visibleCount = 0;
+			visibleBtns.forEach((b) => {
+				const style = getComputedStyle(b);
+				if (style.display !== "none") visibleCount++;
+			});
+			console.debug(`[BTT Debug] Total headings: ${allHeadings.length}, With button: ${withBtn.length}, Visible buttons: ${visibleCount}, Parents with sf-has-backtotop: ${parents.length}`);
+			parents.forEach((p, i) => {
+				console.debug(`[BTT Debug] Parent ${i}: min=${p.getAttribute("data-sf-btt-min")} max=${p.getAttribute("data-sf-btt-max")} class=${p.className.substring(0, 80)}`);
+			});
+		},
+	});
 
 	// Cleanup transition styles on unload
 	plugin.register(() => {
@@ -422,6 +521,7 @@ function normalizeConfig(config: TocConfig, plugin: TocPluginContext): Normalize
 		remove_chars: Array.isArray(config.remove_chars)
 			? config.remove_chars
 			: defaults.remove_chars,
+		backtotop: config.backtotop ?? false,
 		figlet: config.figlet,
 	};
 

@@ -19,6 +19,7 @@ export default defineConfig([
         navigator: "readonly",
         CSS: "readonly",
         requestAnimationFrame: "readonly",
+        getComputedStyle: "readonly",
       },
     },
     rules: {

@@ -5,6 +5,77 @@
 	list-style: none !important;
 }
 
+/* ===== Back to TOC Button ===== */
+
+/* Hidden by default */
+.sf-back-to-toc {
+	display: none;
+	float: right;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	font-size: 13px;
+	line-height: 1;
+	color: var(--text-faint);
+	background: var(--background-secondary);
+	border-radius: 4px;
+	cursor: pointer;
+	transition: color 0.15s ease, background 0.15s ease;
+	margin-top: 4px;
+}
+
+.sf-back-to-toc:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+/* Show buttons when parent has sf-has-backtotop class */
+/* Show all h1-h6 by default when backtotop is active */
+.sf-has-backtotop h1 .sf-back-to-toc,
+.sf-has-backtotop h2 .sf-back-to-toc,
+.sf-has-backtotop h3 .sf-back-to-toc,
+.sf-has-backtotop h4 .sf-back-to-toc,
+.sf-has-backtotop h5 .sf-back-to-toc,
+.sf-has-backtotop h6 .sf-back-to-toc {
+	display: inline-flex;
+}
+
+/* Hide buttons below min level (h1 hidden when min=2+) */
+.sf-has-backtotop[data-sf-btt-min="2"] h1 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-min="3"] h1 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-min="3"] h2 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-min="4"] h1 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-min="4"] h2 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-min="4"] h3 .sf-back-to-toc {
+	display: none;
+}
+
+/* Hide buttons above max level */
+.sf-has-backtotop[data-sf-btt-max="2"] h3 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-max="2"] h4 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-max="2"] h5 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-max="2"] h6 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-max="3"] h4 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-max="3"] h5 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-max="3"] h6 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-max="4"] h5 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-max="4"] h6 .sf-back-to-toc,
+.sf-has-backtotop[data-sf-btt-max="5"] h6 .sf-back-to-toc {
+	display: none;
+}
+
+/* Never show on headings inside the TOC itself */
+.sf-toc .sf-back-to-toc {
+	display: none;
+}
+
+.is-mobile .sf-back-to-toc {
+	width: 30px;
+	height: 30px;
+	font-size: 16px;
+}
+
 /* ===== Outline Panel ===== */
 
 .sf-outline-container {

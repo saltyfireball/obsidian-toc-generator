@@ -37,14 +37,15 @@ Add a code block with the configured language ID (default: `my-toc`) to any note
 
 ### Options
 
-| Option         | Description                         | Default |
-| -------------- | ----------------------------------- | ------- |
-| `title`        | Text displayed above the TOC        | (none)  |
-| `minLevel`     | Minimum heading level (1-6)         | 1       |
-| `maxLevel`     | Maximum heading level (1-6)         | 6       |
-| `numbered`     | Hierarchical numbering (true/false) | false   |
-| `shapes`       | JSON array of bullet shapes         | (none)  |
-| `remove_chars` | JSON array of characters to strip   | (none)  |
+| Option         | Description                                          | Default |
+| -------------- | ---------------------------------------------------- | ------- |
+| `title`        | Text displayed above the TOC                         | (none)  |
+| `minLevel`     | Minimum heading level (1-6)                          | 1       |
+| `maxLevel`     | Maximum heading level (1-6)                          | 6       |
+| `numbered`     | Hierarchical numbering (true/false)                  | false   |
+| `shapes`       | JSON array of bullet shapes                          | (none)  |
+| `remove_chars` | JSON array of characters to strip                    | (none)  |
+| `backtotop`    | Add a back-to-TOC button next to each heading (true/false) | false   |
 
 ### Figlet Options
 
@@ -93,6 +94,26 @@ figlet-color: rainbow
 Contents
 ```
 ````
+
+## Back to TOC
+
+Add `backtotop: true` to a TOC code block to show a small arrow button next to each heading that scrolls back to the table of contents:
+
+````markdown
+```my-toc
+title: Contents
+minLevel: 2
+backtotop: true
+```
+````
+
+- The button appears on hover (always visible on mobile)
+- Only headings within the TOC's configured level range get the button
+- Headings inside the TOC itself are excluded
+
+### Embeds
+
+When a note with `backtotop: true` is embedded in another note, the back-to-top buttons on the embedded headings scroll to the embedded note's TOC -- not the parent note's TOC. Each TOC controls only its own headings.
 
 ## Outline Panel
 
