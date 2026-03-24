@@ -95,6 +95,17 @@
 	font-size: 16px;
 }
 
+/* ===== Prerender: force all sections to render ===== */
+.sf-prerender .markdown-preview-sizer {
+	min-height: auto !important;
+}
+
+.sf-prerender .markdown-preview-section {
+	display: block !important;
+	contain: none !important;
+	content-visibility: visible !important;
+}
+
 /* ===== Outline Panel ===== */
 
 .sf-outline-container {

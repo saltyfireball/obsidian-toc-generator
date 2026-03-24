@@ -9,54 +9,18 @@ function shouldPrerender(app: App, file: TFile): boolean {
 	return value === true || value === "true";
 }
 
-function getScrollElement(view: MarkdownView): HTMLElement | null {
-	const mode = view.getMode();
-	if (mode === "preview") {
-		return view.contentEl.querySelector<HTMLElement>(".markdown-preview-view");
-	}
-	// Live preview / source mode uses cm-scroller
-	return view.contentEl.querySelector<HTMLElement>(".cm-scroller");
-}
-
-function prerenderView(view: MarkdownView): void {
-	const scrollEl = getScrollElement(view);
-	if (!scrollEl) return;
-
-	const originalScroll = scrollEl.scrollTop;
-	const scrollHeight = scrollEl.scrollHeight;
-	const step = scrollEl.clientHeight;
-
-	if (scrollHeight <= step) return;
-
-	let position = 0;
-
-	const scrollStep = () => {
-		position += step;
-		if (position < scrollHeight) {
-			scrollEl.scrollTop = position;
-			requestAnimationFrame(scrollStep);
-		} else {
-			requestAnimationFrame(() => {
-				scrollEl.scrollTop = originalScroll;
-			});
-		}
-	};
-
-	requestAnimationFrame(scrollStep);
-}
-
 export function registerPrerender(app: App, plugin: Plugin): void {
+	// Apply/remove prerender class on file open
 	plugin.registerEvent(
 		app.workspace.on("file-open", (file) => {
-			if (!file) return;
-			if (!shouldPrerender(app, file)) return;
+			const view = app.workspace.getActiveViewOfType(MarkdownView);
+			if (!view) return;
 
-			setTimeout(() => {
-				const view = app.workspace.getActiveViewOfType(MarkdownView);
-				if (view?.file?.path === file.path) {
-					prerenderView(view);
-				}
-			}, 200);
+			if (file && shouldPrerender(app, file)) {
+				view.contentEl.classList.add("sf-prerender");
+			} else {
+				view.contentEl.classList.remove("sf-prerender");
+			}
 		}),
 	);
 
@@ -67,7 +31,7 @@ export function registerPrerender(app: App, plugin: Plugin): void {
 			const view = app.workspace.getActiveViewOfType(MarkdownView);
 			if (!view) return false;
 			if (!checking) {
-				prerenderView(view);
+				view.contentEl.classList.toggle("sf-prerender");
 			}
 			return true;
 		},

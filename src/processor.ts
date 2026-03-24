@@ -133,33 +133,17 @@ export function registerToc(plugin: TocPluginContext) {
 		},
 	);
 
-	// Clean up backtotop class and CM6 state when switching files
-	plugin.registerEvent(
-		plugin.app.workspace.on("active-leaf-change", () => {
-			document.querySelectorAll(".sf-has-backtotop").forEach((htmlEl) => {
-				htmlEl.classList.remove("sf-has-backtotop");
-				htmlEl.removeAttribute("data-sf-btt-min");
-				htmlEl.removeAttribute("data-sf-btt-max");
-			});
-			document.querySelectorAll(".sf-hide-embed-tocs").forEach((htmlEl) => {
-				htmlEl.classList.remove("sf-hide-embed-tocs");
-			});
-			// Disable CM6 decorations
-			const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
-			if (view) {
-				const editorView = (view.editor as unknown as { cm?: EditorView }).cm;
-				if (editorView instanceof EditorView) {
-					editorView.dispatch({
-						effects: setBackToTopConfig.of({
-							enabled: false,
-							minLevel: 1,
-							maxLevel: 6,
-						}),
-					});
-				}
-			}
-		}),
-	);
+	// Cleanup on plugin unload
+	plugin.register(() => {
+		document.querySelectorAll(".sf-has-backtotop").forEach((htmlEl) => {
+			htmlEl.classList.remove("sf-has-backtotop");
+			htmlEl.removeAttribute("data-sf-btt-min");
+			htmlEl.removeAttribute("data-sf-btt-max");
+		});
+		document.querySelectorAll(".sf-hide-embed-tocs").forEach((htmlEl) => {
+			htmlEl.classList.remove("sf-hide-embed-tocs");
+		});
+	});
 
 	plugin.registerEvent(
 		plugin.app.metadataCache.on("changed", (file) => {
@@ -410,7 +394,6 @@ async function renderToc(
 			cls: "sf-toc-link" + (isEmbedHeading ? " sf-toc-link-embed" : ""),
 			text: displayHeading,
 		});
-		const headingText = heading.heading;
 		link.addEventListener("click", (e: MouseEvent) => {
 			e.preventDefault();
 
@@ -419,29 +402,26 @@ async function renderToc(
 
 			const isEmbed = headingSourcePath && activeView.file?.path !== headingSourcePath;
 
-			if (isEmbed && headingSourcePath) {
-				// Try to find the embed container for this source file
-				const embeds = activeView.contentEl.querySelectorAll(".internal-embed, .markdown-embed");
-				let targetContainer: Element | null = null;
-				for (const embedEl of Array.from(embeds)) {
-					const src = embedEl.getAttribute("src") ?? "";
-					if (src.includes(headingSourcePath.replace(/\.md$/, ""))) {
-						targetContainer = embedEl;
-						break;
-					}
-				}
+			if (isEmbed) {
+				// For embedded headings, we need to find the embed's position
+				// in the parent document and scroll to it.
+				// The embed reference is in the parent file's metadata cache.
+				const parentFile = activeView.file;
+				if (!parentFile || !headingSourcePath) return;
+				const parentCache = plugin.app.metadataCache.getFileCache(parentFile);
+				const parentEmbeds = parentCache?.embeds ?? [];
 
-				// Search in the embed container, or fall back to full view
-				const searchRoot = targetContainer ?? activeView.contentEl;
-				const headingEls = searchRoot.querySelectorAll("h1, h2, h3, h4, h5, h6");
-				for (const el of Array.from(headingEls)) {
-					if (el.closest(".sf-toc")) continue;
-					const dh = el.getAttribute("data-heading");
-					const tc = el.textContent?.trim() ?? "";
-					if (dh === headingText || tc === headingText) {
-						el.scrollIntoView({ behavior: "smooth", block: "start" });
-						return;
-					}
+				// Find the embed that references this file
+				const fileName = headingSourcePath.replace(/\.md$/, "");
+				const embedRef = parentEmbeds.find((emb: { link: string }) => {
+					const linkFile = emb.link.split("#")[0].split("|")[0];
+					return linkFile === fileName || fileName.endsWith(linkFile);
+				});
+
+				if (embedRef?.position) {
+					// Scroll the parent view to the embed's line position
+					const embedLine = (embedRef.position as { start: { line: number } }).start.line;
+					scrollInView(activeView, embedLine);
 				}
 				return;
 			}
@@ -457,11 +437,21 @@ async function renderToc(
 function scrollInView(view: MarkdownView, line: number): void {
 	const mode = view.getMode();
 	if (mode === "source") {
-		view.editor.setCursor(line, 0);
-		view.editor.scrollIntoView(
-			{ from: { line, ch: 0 }, to: { line, ch: 0 } },
-			true,
-		);
+		// Use CM6 scrollIntoView for precise control
+		const editorView = (view.editor as unknown as { cm?: EditorView }).cm;
+		if (editorView instanceof EditorView) {
+			const lineInfo = editorView.state.doc.line(Math.min(line + 1, editorView.state.doc.lines));
+			editorView.dispatch({
+				selection: { anchor: lineInfo.from },
+				effects: EditorView.scrollIntoView(lineInfo.from, { y: "start", yMargin: 10 }),
+			});
+		} else {
+			view.editor.setCursor(line, 0);
+			view.editor.scrollIntoView(
+				{ from: { line, ch: 0 }, to: { line, ch: 0 } },
+				false,
+			);
+		}
 	} else {
 		const currentMode = view.currentMode as unknown as { applyScroll?: (line: number) => void };
 		if (typeof currentMode.applyScroll === "function") {
