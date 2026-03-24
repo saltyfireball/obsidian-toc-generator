@@ -403,9 +403,6 @@ async function renderToc(
 			const isEmbed = headingSourcePath && activeView.file?.path !== headingSourcePath;
 
 			if (isEmbed) {
-				// For embedded headings, we need to find the embed's position
-				// in the parent document and scroll to it.
-				// The embed reference is in the parent file's metadata cache.
 				const parentFile = activeView.file;
 				if (!parentFile || !headingSourcePath) return;
 				const parentCache = plugin.app.metadataCache.getFileCache(parentFile);
@@ -419,9 +416,27 @@ async function renderToc(
 				});
 
 				if (embedRef?.position) {
-					// Scroll the parent view to the embed's line position
 					const embedLine = (embedRef.position as { start: { line: number } }).start.line;
+					// Scroll to the embed reference line first
 					scrollInView(activeView, embedLine);
+
+					// In preview mode, after scrolling to the embed area,
+					// try to find the heading in the now-rendered DOM
+					if (activeView.getMode() !== "source") {
+						const headingName = heading.heading;
+						setTimeout(() => {
+							const els = activeView.contentEl.querySelectorAll("h1, h2, h3, h4, h5, h6");
+							for (const el of Array.from(els)) {
+								if (el.closest(".sf-toc")) continue;
+								const dh = el.getAttribute("data-heading");
+								const tc = el.textContent?.trim() ?? "";
+								if (dh === headingName || tc === headingName) {
+									el.scrollIntoView({ behavior: "smooth", block: "start" });
+									return;
+								}
+							}
+						}, 400);
+					}
 				}
 				return;
 			}
