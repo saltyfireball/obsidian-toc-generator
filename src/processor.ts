@@ -543,8 +543,8 @@ async function renderFigletForToc(
 				}
 			}
 		}
-	} catch (err) {
-		console.error("Error rendering figlet for TOC:", err);
+	} catch {
+		// Font not found or figlet error - silently skip, TOC renders without figlet
 	}
 }
 
