@@ -145,7 +145,8 @@ export class OutlineView extends ItemView {
 			});
 			item.setCssStyles({ paddingLeft: `${indent * 16}px` });
 
-			item.createEl("span", { cls: "sf-outline-link", text: heading.heading });
+			const linkEl = item.createEl("span", { cls: "sf-outline-link" });
+			linkEl.innerHTML = heading.heading;
 
 			const line = heading.position.start.line;
 			item.addEventListener("click", () => {

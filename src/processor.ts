@@ -392,8 +392,8 @@ async function renderToc(
 
 		const link = item.createEl("a", {
 			cls: "sf-toc-link" + (isEmbedHeading ? " sf-toc-link-embed" : ""),
-			text: displayHeading,
 		});
+		link.innerHTML = displayHeading;
 		link.addEventListener("click", (e: MouseEvent) => {
 			e.preventDefault();
 
