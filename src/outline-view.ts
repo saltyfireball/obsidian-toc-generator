@@ -146,7 +146,7 @@ export class OutlineView extends ItemView {
 			item.setCssStyles({ paddingLeft: `${indent * 16}px` });
 
 			const linkEl = item.createEl("span", { cls: "sf-outline-link" });
-			linkEl.innerHTML = heading.heading;
+			linkEl.innerHTML = renderInlineMarkdown(heading.heading);
 
 			const line = heading.position.start.line;
 			item.addEventListener("click", () => {
@@ -179,6 +179,13 @@ export class OutlineView extends ItemView {
 			this.isScrolling = false;
 		}, 300);
 	}
+}
+
+function renderInlineMarkdown(text: string): string {
+	return text
+		.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+		.replace(/\*(.+?)\*/g, "<em>$1</em>")
+		.replace(/==(.+?)==/g, "<mark>$1</mark>");
 }
 
 export function registerOutlineView(app: App, plugin: import("obsidian").Plugin): void {
