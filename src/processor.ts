@@ -2,6 +2,7 @@ import { App, MarkdownView, Plugin, TFile } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import type { TocPluginSettings } from "./main";
 import { setBackToTopConfig } from "./backtotop-extension";
+import { appendInlineMarkdown } from "./inline-markdown";
 
 // Transition duration in ms
 const TOC_TRANSITION_MS = 250;
@@ -393,7 +394,7 @@ async function renderToc(
 		const link = item.createEl("a", {
 			cls: "sf-toc-link" + (isEmbedHeading ? " sf-toc-link-embed" : ""),
 		});
-		link.innerHTML = renderInlineMarkdown(displayHeading);
+		appendInlineMarkdown(link, displayHeading);
 		link.addEventListener("click", (e: MouseEvent) => {
 			e.preventDefault();
 
@@ -767,22 +768,6 @@ function normalizeConfig(config: TocConfig, plugin: TocPluginContext): Normalize
 	return normalized;
 }
 
-/**
- * Convert markdown inline formatting to HTML.
- * Handles **bold**, *italic*, and ==highlight==.
- * HTML-escapes the text first to prevent injection.
- */
-/**
- * Convert markdown inline formatting to HTML.
- * Handles **bold**, *italic*, and ==highlight==.
- * Preserves existing HTML tags (content is from the user's own vault).
- */
-function renderInlineMarkdown(text: string): string {
-	return text
-		.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-		.replace(/\*(.+?)\*/g, "<em>$1</em>")
-		.replace(/==(.+?)==/g, "<mark>$1</mark>");
-}
 
 function stripChars(text: string, chars: string[]) {
 	if (!chars || chars.length === 0) return text;

@@ -1,5 +1,6 @@
 import { ItemView, MarkdownView, TFile, WorkspaceLeaf } from "obsidian";
 import type { App } from "obsidian";
+import { appendInlineMarkdown } from "./inline-markdown";
 
 export const OUTLINE_VIEW_TYPE = "sf-outline";
 
@@ -146,7 +147,7 @@ export class OutlineView extends ItemView {
 			item.setCssStyles({ paddingLeft: `${indent * 16}px` });
 
 			const linkEl = item.createEl("span", { cls: "sf-outline-link" });
-			linkEl.innerHTML = renderInlineMarkdown(heading.heading);
+			appendInlineMarkdown(linkEl, heading.heading);
 
 			const line = heading.position.start.line;
 			item.addEventListener("click", () => {
@@ -181,12 +182,6 @@ export class OutlineView extends ItemView {
 	}
 }
 
-function renderInlineMarkdown(text: string): string {
-	return text
-		.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-		.replace(/\*(.+?)\*/g, "<em>$1</em>")
-		.replace(/==(.+?)==/g, "<mark>$1</mark>");
-}
 
 export function registerOutlineView(app: App, plugin: import("obsidian").Plugin): void {
 	plugin.registerView(OUTLINE_VIEW_TYPE, (leaf) => new OutlineView(leaf));
