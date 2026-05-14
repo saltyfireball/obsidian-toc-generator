@@ -2,15 +2,33 @@
  * Append a string of inline markdown text to `target` as DOM nodes.
  *
  * Supports a small subset suitable for heading text in the TOC and outline:
- *   - `code`            -> <code>code</code>      (backslash-escape with \`)
- *   - **bold**          -> <strong>bold</strong>
- *   - *italic*          -> <em>italic</em>
- *   - ==marked==        -> <mark>marked</mark>
+ *   - `code`                   -> <code>code</code>      (backslash-escape with \`)
+ *   - **bold**                 -> <strong>bold</strong>
+ *   - *italic*                 -> <em>italic</em>
+ *   - ==marked==               -> <mark>marked</mark>
+ *   - <mark class="...">x</mark> -> <mark class="...">x</mark>
+ *     (attributes other than `class` are dropped; class is allow-listed to
+ *     plain word/dash tokens to keep injection paths minimal)
  *
- * Uses textContent on each created element, so nothing is HTML-injected.
+ * Uses textContent on created elements, so the inner content cannot
+ * inject HTML.
  */
+
+const CLASS_ATTR_RE = /\bclass\s*=\s*"([^"]*)"|\bclass\s*=\s*'([^']*)'/i;
+const SAFE_CLASS_RE = /^[\w-]+(\s+[\w-]+)*$/;
+
+function extractSafeClass(attrs: string): string | null {
+	const match = CLASS_ATTR_RE.exec(attrs);
+	if (!match) return null;
+	const value = (match[1] ?? match[2] ?? "").trim();
+	if (!value || !SAFE_CLASS_RE.test(value)) return null;
+	return value;
+}
+
 export function appendInlineMarkdown(target: HTMLElement, text: string): void {
-	const regex = /(\\`)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*|==([^=]+)==/g;
+	// Order matters in the alternation: longer/more-specific patterns must
+	// come first or they get partially consumed by shorter ones (e.g. ** vs *).
+	const regex = /(\\`)|`([^`]+)`|<mark\b([^>]*)>([\s\S]*?)<\/mark>|\*\*([^*]+)\*\*|\*([^*]+)\*|==([^=]+)==/gi;
 	let lastIndex = 0;
 	let m: RegExpExecArray | null;
 
@@ -27,17 +45,25 @@ export function appendInlineMarkdown(target: HTMLElement, text: string): void {
 			const code = document.createElement("code");
 			code.textContent = m[2];
 			target.appendChild(code);
-		} else if (m[3] !== undefined) {
-			const strong = document.createElement("strong");
-			strong.textContent = m[3];
-			target.appendChild(strong);
-		} else if (m[4] !== undefined) {
-			const em = document.createElement("em");
-			em.textContent = m[4];
-			target.appendChild(em);
-		} else if (m[5] !== undefined) {
+		} else if (m[3] !== undefined && m[4] !== undefined) {
 			const mark = document.createElement("mark");
-			mark.textContent = m[5];
+			const safeClass = extractSafeClass(m[3]);
+			if (safeClass) mark.className = safeClass;
+			// Recurse into the inner content so nested **bold** etc. inside
+			// a <mark> still renders.
+			appendInlineMarkdown(mark, m[4]);
+			target.appendChild(mark);
+		} else if (m[5] !== undefined) {
+			const strong = document.createElement("strong");
+			strong.textContent = m[5];
+			target.appendChild(strong);
+		} else if (m[6] !== undefined) {
+			const em = document.createElement("em");
+			em.textContent = m[6];
+			target.appendChild(em);
+		} else if (m[7] !== undefined) {
+			const mark = document.createElement("mark");
+			mark.textContent = m[7];
 			target.appendChild(mark);
 		}
 
