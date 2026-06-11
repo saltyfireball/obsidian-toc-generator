@@ -1,5 +1,5 @@
 import { Plugin, PluginSettingTab, App } from "obsidian";
-import { registerToc } from "./processor";
+import { registerToc, applyGlobalBacktotop } from "./processor";
 import { registerOutlineView } from "./outline-view";
 import { registerPrerender } from "./prerender";
 import { createBackToTopExtension } from "./backtotop-extension";
@@ -13,6 +13,12 @@ export interface TocPluginSettings {
 	defaultMaxLevel: number;
 	defaultNumbered: boolean;
 	defaultShapes: string[];
+	// When true, every heading in every note gets a back-to-top button without
+	// needing a TOC code block with `backtotop: true`. Per-block opt-in still
+	// works alongside this.
+	backtotopGlobal: boolean;
+	backtotopGlobalMinLevel: number;
+	backtotopGlobalMaxLevel: number;
 }
 
 const DEFAULT_SETTINGS: TocPluginSettings = {
@@ -23,6 +29,9 @@ const DEFAULT_SETTINGS: TocPluginSettings = {
 	defaultMaxLevel: 6,
 	defaultNumbered: false,
 	defaultShapes: [],
+	backtotopGlobal: false,
+	backtotopGlobalMinLevel: 1,
+	backtotopGlobalMaxLevel: 6,
 };
 
 export default class TocGeneratorPlugin extends Plugin {
@@ -40,6 +49,10 @@ export default class TocGeneratorPlugin extends Plugin {
 		this.registerEditorExtension(createBackToTopExtension());
 		registerOutlineView(this.app, this);
 		registerPrerender(this.app, this);
+
+		this.app.workspace.onLayoutReady(() => {
+			applyGlobalBacktotop(this as unknown as Parameters<typeof applyGlobalBacktotop>[0]);
+		});
 	}
 
 	async loadSettings() {

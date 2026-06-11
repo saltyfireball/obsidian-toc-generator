@@ -160,6 +160,17 @@ export function registerToc(plugin: TocPluginContext) {
 		}),
 	);
 
+	// Re-dispatch the CM6 back-to-top config to every editor when the user
+	// switches notes / leaves, so the just-activated editor reflects the
+	// current global setting.
+	const resyncOnActivation = () => {
+		if (plugin.settings.backtotopGlobal) {
+			applyGlobalBacktotop(plugin);
+		}
+	};
+	plugin.registerEvent(plugin.app.workspace.on("file-open", resyncOnActivation));
+	plugin.registerEvent(plugin.app.workspace.on("active-leaf-change", resyncOnActivation));
+
 	// Back-to-top: MutationObserver adds hidden buttons to ALL headings as they appear.
 	// Visibility is controlled via CSS :has() based on .sf-toc[data-sf-toc-backtotop].
 	// This catches lazy-rendered headings that appear on scroll.
@@ -879,4 +890,47 @@ function parseConfigValue(raw: string): string | number | boolean | string[] {
 	if (lowered === "false") return false;
 	if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw);
 	return raw.replace(/^['"]|['"]$/g, "");
+}
+
+/**
+ * Apply the current global back-to-top setting.
+ *
+ * When backtotopGlobal is true, `sf-has-backtotop` (plus the min/max data
+ * attributes) is placed on document.body so the buttons show on every
+ * heading across every open note. We also dispatch the CM6 widget config
+ * to every open MarkdownView so live preview matches reading view.
+ *
+ * When it's false, we remove the body class and dispatch enabled:false to
+ * each editor. Per-block `backtotop: true` still works because the
+ * per-block flow sets the class on the view's contentEl (independent of
+ * document.body) and dispatches its own CM6 config.
+ */
+export function applyGlobalBacktotop(plugin: TocPluginContext): void {
+	const s = plugin.settings;
+	const body = document.body;
+
+	if (s.backtotopGlobal) {
+		body.classList.add("sf-has-backtotop");
+		body.setAttribute("data-sf-btt-min", String(s.backtotopGlobalMinLevel));
+		body.setAttribute("data-sf-btt-max", String(s.backtotopGlobalMaxLevel));
+	} else {
+		body.classList.remove("sf-has-backtotop");
+		body.removeAttribute("data-sf-btt-min");
+		body.removeAttribute("data-sf-btt-max");
+	}
+
+	const cmConfig = {
+		enabled: s.backtotopGlobal,
+		minLevel: s.backtotopGlobalMinLevel,
+		maxLevel: s.backtotopGlobalMaxLevel,
+	};
+
+	plugin.app.workspace.iterateAllLeaves((leaf) => {
+		const view = leaf.view;
+		if (!(view instanceof MarkdownView)) return;
+		const editorView = (view.editor as unknown as { cm?: EditorView }).cm;
+		if (editorView instanceof EditorView) {
+			editorView.dispatch({ effects: setBackToTopConfig.of(cmConfig) });
+		}
+	});
 }

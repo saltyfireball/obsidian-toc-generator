@@ -1,5 +1,6 @@
 import { Setting } from "obsidian";
 import type TocGeneratorPlugin from "./main";
+import { applyGlobalBacktotop } from "./processor";
 
 interface RenderSettingsTabArgs {
 	plugin: TocGeneratorPlugin;
@@ -121,6 +122,58 @@ export function renderSettingsTab({ plugin, containerEl }: RenderSettingsTabArgs
 					await plugin.saveSettings();
 				});
 			text.inputEl.addClass("tg-input-width");
+		});
+
+	// Global back-to-top
+	new Setting(containerEl).setName("Back-to-top buttons").setHeading();
+	containerEl.createEl("p", {
+		text: "When enabled, every heading in every note gets a back-to-top button without needing a TOC code block. Per-block `backtotop: true` still works alongside this.",
+		cls: "tg-hint",
+	});
+
+	new Setting(containerEl)
+		.setName("Always show back-to-top buttons")
+		.setDesc("Show a back-to-top button on every heading across all notes.")
+		.addToggle((toggle) => {
+			toggle
+				.setValue(plugin.settings.backtotopGlobal)
+				.onChange(async (value) => {
+					plugin.settings.backtotopGlobal = value;
+					await plugin.saveSettings();
+					applyGlobalBacktotop(plugin as unknown as Parameters<typeof applyGlobalBacktotop>[0]);
+				});
+		});
+
+	new Setting(containerEl)
+		.setName("Global min heading level")
+		.setDesc("Hide back-to-top buttons on headings above this level (1 = h1, 6 = h6).")
+		.addDropdown((dropdown) => {
+			for (let i = 1; i <= 6; i++) {
+				dropdown.addOption(String(i), `H${i}`);
+			}
+			dropdown
+				.setValue(String(plugin.settings.backtotopGlobalMinLevel))
+				.onChange(async (value) => {
+					plugin.settings.backtotopGlobalMinLevel = parseInt(value, 10);
+					await plugin.saveSettings();
+					applyGlobalBacktotop(plugin as unknown as Parameters<typeof applyGlobalBacktotop>[0]);
+				});
+		});
+
+	new Setting(containerEl)
+		.setName("Global max heading level")
+		.setDesc("Hide back-to-top buttons on headings below this level (1 = h1, 6 = h6).")
+		.addDropdown((dropdown) => {
+			for (let i = 1; i <= 6; i++) {
+				dropdown.addOption(String(i), `H${i}`);
+			}
+			dropdown
+				.setValue(String(plugin.settings.backtotopGlobalMaxLevel))
+				.onChange(async (value) => {
+					plugin.settings.backtotopGlobalMaxLevel = parseInt(value, 10);
+					await plugin.saveSettings();
+					applyGlobalBacktotop(plugin as unknown as Parameters<typeof applyGlobalBacktotop>[0]);
+				});
 		});
 
 	// Usage Examples
